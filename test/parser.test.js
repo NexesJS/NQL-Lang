@@ -1,5 +1,9 @@
 require('./utils');
+
 const parse = require('../lib/nql').parse;
+const sub = require('date-fns/sub');
+const add = require('date-fns/add');
+const format = require('date-fns/formatRFC3339');
 
 describe('Parser', function () {
     var parserError = /^Query Error: unexpected character in filter at char/;
@@ -476,5 +480,34 @@ describe('Parser', function () {
             parse('tag:getting-started+author:joe', {aliases: {tag: 'tags.slug', author: 'authors.slug'}})
                 .should.eql({$and: [{'tags.slug': 'getting-started'}, {'authors.slug': 'joe'}]});
         });
+    });
+
+    describe('Relative dates', function () {
+        it('can expand a relative date into the correct date', function () {
+            // NOTE: this question compares values, it could fail if the second changes within the test
+            // If it starts to fail, we should delete this test
+            parse('last_seen_at:>=now-2d').should.eql(
+                {last_seen_at: {$gte: format(sub(new Date(), {days: 2}))}}
+            );
+
+            parse('last_seen_at:<=now+2d').should.eql(
+                {last_seen_at: {$lte: format(add(new Date(), {days: 2}))}}
+            );
+        });
+
+        it('can expand a relative date into an absolute date', function () {
+            // This test proves that the date is in the right format, but not that it is the right date
+            const subRes = parse('last_seen_at:>=now-2d');
+            subRes.should.be.an.Object().with.property('last_seen_at');
+            subRes.last_seen_at.should.be.an.Object().with.property('$gte');
+            subRes.last_seen_at.$gte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+
+            const addRes = parse('last_seen_at:<=now+2d');
+            addRes.should.be.an.Object().with.property('last_seen_at');
+            addRes.last_seen_at.should.be.an.Object().with.property('$lte');
+            addRes.last_seen_at.$lte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+        });
+
+
     });
 });

@@ -38,6 +38,7 @@ describe('Lexer', function () {
         it('can recognise <=', function () {
             lex('<=').should.eql([{token: 'LTE', matched: '<='}]);
         });
+
         it('cannot recognise :', function () {
             (function () {
                 lex(':');
@@ -618,6 +619,62 @@ describe('Lexer', function () {
                 {token: 'PROP', matched: 'post.count:'},
                 {token: 'LT', matched: '<'},
                 {token: 'NUMBER', matched: '100'}
+            ]);
+        });
+    });
+
+    describe('Relative Dates', function () {
+        it('Does not confuse literals when they are almost relative dates with sub', function () {
+            const cases = [
+                'now-2',
+                'now-12',
+                'now-2Q',
+                'now-2Qd',
+                'now-2D',
+                'now-2m',
+                'now-2W',
+                'now-2Y'
+            ];
+
+            cases.forEach(function (testCase) {
+                lex(testCase).should.eql([{token: 'LITERAL', matched: testCase}]);
+            });
+        });
+
+        it('Does not confuse expressions when they are almost relative dates with add', function () {
+            const cases = [
+                'now+2',
+                'now+12',
+                'now+2Q',
+                'now+2Qd',
+                'now+2D',
+                'now+2m',
+                'now+2W',
+                'now+2Y'
+            ];
+
+            cases.forEach(function (testCase) {
+                lex(testCase).should.be.an.Array().with.lengthOf(3);
+            });
+        });
+
+        it('Full relative date expressions', function () {
+            lex('last_seen_at:>=now-2d').should.eql([
+                {token: 'PROP', matched: 'last_seen_at:'},
+                {token: 'GTE', matched: '>='},
+                {token: 'NOW', matched: 'now'},
+                {token: 'SUB', matched: '-'},
+                {token: 'AMOUNT', matched: '2'},
+                {token: 'INTERVAL', matched: 'd'}
+            ]);
+
+            lex('last_seen_at:>=now+2d').should.eql([
+                {token: 'PROP', matched: 'last_seen_at:'},
+                {token: 'GTE', matched: '>='},
+                {token: 'NOW', matched: 'now'},
+                {token: 'ADD', matched: '+'},
+                {token: 'AMOUNT', matched: '2'},
+                {token: 'INTERVAL', matched: 'd'}
             ]);
         });
     });
