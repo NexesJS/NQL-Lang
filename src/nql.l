@@ -20,11 +20,11 @@ escapable                    ['"\+\,\(\)\>\<=\[\]]
 ']'                                                         return 'RBRACKET';
 
 /* relative date handling */
-'now'(?=[-+]\d+[dwMy])           this.pushState('reldate'); return 'NOW';
+'now'(?=[-+]\d+[dwMyhms])        this.pushState('reldate'); return 'NOW';
 <reldate>'-'                                                return 'SUB';
 <reldate>'+'                                                return 'ADD';
 <reldate>\d+                                                return 'AMOUNT'
-<reldate>[dwMy]                            this.popState(); return 'INTERVAL'
+<reldate>[dwMyhms]                         this.popState(); return 'INTERVAL'
 
 {omitops}(\\{escapable}|{omitopsbarnot})+                   return 'LITERAL';
 ['](\\['"]|[^'"])+?[']                                      return 'STRING';

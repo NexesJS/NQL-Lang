@@ -507,7 +507,5 @@ describe('Parser', function () {
             addRes.last_seen_at.should.be.an.Object().with.property('$lte');
             addRes.last_seen_at.$lte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
         });
-
-
     });
 });

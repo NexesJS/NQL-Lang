@@ -66,7 +66,7 @@ VALUE
     | TRUE { $$ = true }
     | FALSE { $$ = false }
     | NUMBER { $$ = parseInt(yytext); }
-    | NOW DATEOP AMOUNT INTERVAL { $$ = yy.datediff($1, $2, $3, $4) }
+    | NOW DATEOP AMOUNT INTERVAL { $$ = yy.relDateToAbsolute($2, $3, $4) }
     | LITERAL { $$ = yy.unescape($1); }
     | STRING  { $1 = $1.replace(/^'|'$/g, ''); $$ = yy.unescape($1); }
     ;

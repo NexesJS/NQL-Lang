@@ -624,14 +624,13 @@ describe('Lexer', function () {
     });
 
     describe('Relative Dates', function () {
-        it('Does not confuse literals when they are almost relative dates with sub', function () {
+        it('Does not confuse LITERALs when they are almost relative dates with sub', function () {
             const cases = [
                 'now-2',
                 'now-12',
                 'now-2Q',
                 'now-2Qd',
                 'now-2D',
-                'now-2m',
                 'now-2W',
                 'now-2Y'
             ];
@@ -648,13 +647,46 @@ describe('Lexer', function () {
                 'now+2Q',
                 'now+2Qd',
                 'now+2D',
-                'now+2m',
                 'now+2W',
                 'now+2Y'
             ];
 
             cases.forEach(function (testCase) {
-                lex(testCase).should.be.an.Array().with.lengthOf(3);
+                const result = lex(testCase);
+                result.should.be.an.Array().with.lengthOf(3);
+                result[0].should.eql({token: 'LITERAL', matched: 'now'});
+                result[1].should.eql({token: 'AND', matched: '+'});
+            });
+        });
+
+        it('can expand all valid intervals', function () {
+            const intervals = {
+                d: 'days',
+                w: 'weeks',
+                M: 'months',
+                y: 'years',
+                h: 'hours',
+                m: 'minutes',
+                s: 'seconds'
+            };
+
+            const cases = [
+                'now-2d',
+                'now-2w',
+                'now-2M',
+                'now-2y',
+                'now-2h',
+                'now-2m',
+                'now-2s'
+            ];
+
+            cases.forEach(function (testCase, i) {
+                const result = lex(testCase);
+                result.should.be.an.Array().with.lengthOf(4);
+                result[0].should.eql({token: 'NOW', matched: 'now'});
+                result[1].should.eql({token: 'SUB', matched: '-'});
+                result[2].should.eql({token: 'AMOUNT', matched: '2'});
+                result[3].should.eql({token: 'INTERVAL', matched: Object.keys(intervals)[i]});
             });
         });
 
