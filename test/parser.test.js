@@ -1,9 +1,9 @@
 require('./utils');
 
+const sinon = require('sinon');
+
+const scope = require('../lib/scope');
 const parse = require('../lib/nql').parse;
-const sub = require('date-fns/sub');
-const add = require('date-fns/add');
-const format = require('date-fns/formatRFC3339');
 
 describe('Parser', function () {
     var parserError = /^Query Error: unexpected character in filter at char/;
@@ -483,29 +483,89 @@ describe('Parser', function () {
     });
 
     describe('Relative dates', function () {
-        it('can expand a relative date into the correct date', function () {
-            // NOTE: this question compares values, it could fail if the second changes within the test
-            // If it starts to fail, we should delete this test
-            parse('last_seen_at:>=now-2d').should.eql(
-                {last_seen_at: {$gte: format(sub(new Date(), {days: 2}))}}
-            );
+        describe('relDateToAbsolute is called correctly', function () {
+            let relDateToAbsoluteStub;
 
-            parse('last_seen_at:<=now+2d').should.eql(
-                {last_seen_at: {$lte: format(add(new Date(), {days: 2}))}}
-            );
+            beforeEach(function () {
+                relDateToAbsoluteStub = sinon.stub(scope, 'relDateToAbsolute');
+            });
+
+            afterEach(function () {
+                sinon.restore();
+            });
+
+            it('last_seen_at:>=now-2d', function () {
+                parse('last_seen_at:>=now-2d');
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'sub', '2', 'd');
+            });
+
+            it('last_seen_at:>=now+365d', function () {
+                parse('last_seen_at:<=now+365d');
+
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'add', '365', 'd');
+            });
+
+            it('last_seen_at:>=now-12w', function () {
+                parse('last_seen_at:>=now-12w');
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'sub', '12', 'w');
+            });
+
+            it('last_seen_at:>=now+2M', function () {
+                parse('last_seen_at:<=now+2M');
+
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'add', '2', 'M');
+            });
+
+            it('last_seen_at:>=now-2y', function () {
+                parse('last_seen_at:>=now-2y');
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'sub', '2', 'y');
+            });
+
+            it('last_seen_at:>=now+2h', function () {
+                parse('last_seen_at:<=now+2h');
+
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'add', '2', 'h');
+            });
+
+            it('last_seen_at:>=now+2m', function () {
+                parse('last_seen_at:<=now+2m');
+
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'add', '2', 'm');
+            });
+
+            it('last_seen_at:>=now+2s', function () {
+                parse('last_seen_at:<=now+2s');
+
+                sinon.assert.calledWithExactly(relDateToAbsoluteStub, 'add', '2', 's');
+            });
         });
 
-        it('can expand a relative date into an absolute date', function () {
-            // This test proves that the date is in the right format, but not that it is the right date
-            const subRes = parse('last_seen_at:>=now-2d');
-            subRes.should.be.an.Object().with.property('last_seen_at');
-            subRes.last_seen_at.should.be.an.Object().with.property('$gte');
-            subRes.last_seen_at.$gte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+        describe('call to relDateToAbsolute results in the correct structure', function () {
+            let relDateToAbsoluteSpy;
 
-            const addRes = parse('last_seen_at:<=now+2d');
-            addRes.should.be.an.Object().with.property('last_seen_at');
-            addRes.last_seen_at.should.be.an.Object().with.property('$lte');
-            addRes.last_seen_at.$lte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+            beforeEach(function () {
+                // spy lets requests through
+                relDateToAbsoluteSpy = sinon.spy(scope, 'relDateToAbsolute');
+            });
+
+            afterEach(function () {
+                sinon.restore();
+            });
+
+            it('can expand a relative date into an absolute date', function () {
+                // This test proves that the date is in the right format, but not that it is the right date
+                const subRes = parse('last_seen_at:>=now-2d');
+                subRes.should.be.an.Object().with.property('last_seen_at');
+                subRes.last_seen_at.should.be.an.Object().with.property('$gte');
+                subRes.last_seen_at.$gte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+
+                const addRes = parse('last_seen_at:<=now+2d');
+                addRes.should.be.an.Object().with.property('last_seen_at');
+                addRes.last_seen_at.should.be.an.Object().with.property('$lte');
+                addRes.last_seen_at.$lte.should.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
+
+                sinon.assert.calledTwice(relDateToAbsoluteSpy);
+            });
         });
     });
 });

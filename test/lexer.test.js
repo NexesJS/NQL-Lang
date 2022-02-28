@@ -119,6 +119,7 @@ describe('Lexer', function () {
             lex('its-nullable').should.eql([{token: 'LITERAL', matched: 'its-nullable'}]);
             lex('notnullable').should.eql([{token: 'LITERAL', matched: 'notnullable'}]);
             lex('null-thing').should.eql([{token: 'LITERAL', matched: 'null-thing'}]);
+            lex('its-a-null-thing').should.eql([{token: 'LITERAL', matched: 'its-a-null-thing'}]);
         });
 
         it('does not confuse keywords in STRINGs', function () {
@@ -130,6 +131,7 @@ describe('Lexer', function () {
             lex('\'its-nullable\'').should.eql([{token: 'STRING', matched: '\'its-nullable\''}]);
             lex('\'notnullable\'').should.eql([{token: 'STRING', matched: '\'notnullable\''}]);
             lex('\'null-thing\'').should.eql([{token: 'STRING', matched: '\'null-thing\''}]);
+            lex('\'its-a-null-thing\'').should.eql([{token: 'STRING', matched: '\'its-a-null-thing\''}]);
         });
     });
 
@@ -519,10 +521,15 @@ describe('Lexer', function () {
                 'now-2',
                 'now-12',
                 'now-2Q',
-                'now-2Qd',
+                'now-2dQ',
+                'now-2d1',
                 'now-2D',
                 'now-2W',
-                'now-2Y'
+                'now-2Y',
+                'its-now-2d',
+                'its-now-2dY',
+                'snow-2d',
+                'snow-2dY'
             ];
 
             cases.forEach(function (testCase) {
@@ -535,7 +542,8 @@ describe('Lexer', function () {
                 'now+2',
                 'now+12',
                 'now+2Q',
-                'now+2Qd',
+                'now+2dQ',
+                'now+2d1',
                 'now+2D',
                 'now+2W',
                 'now+2Y'
@@ -547,6 +555,27 @@ describe('Lexer', function () {
                 result[0].should.eql({token: 'LITERAL', matched: 'now'});
                 result[1].should.eql({token: 'AND', matched: '+'});
             });
+
+            lex('its-now+2d').should.eql([
+                {token: 'LITERAL', matched: 'its-now'},
+                {token: 'AND', matched: '+'},
+                {token: 'LITERAL', matched: '2d'}
+            ]);
+            lex('its-now+2dY').should.eql([
+                {token: 'LITERAL', matched: 'its-now'},
+                {token: 'AND', matched: '+'},
+                {token: 'LITERAL', matched: '2dY'}
+            ]);
+            lex('snow+2d').should.eql([
+                {token: 'LITERAL', matched: 'snow'},
+                {token: 'AND', matched: '+'},
+                {token: 'LITERAL', matched: '2d'}
+            ]);
+            lex('snow+2dY').should.eql([
+                {token: 'LITERAL', matched: 'snow'},
+                {token: 'AND', matched: '+'},
+                {token: 'LITERAL', matched: '2dY'}
+            ]);
         });
 
         it('can expand all valid intervals', function () {
@@ -580,24 +609,56 @@ describe('Lexer', function () {
             });
         });
 
-        it('Full relative date expressions', function () {
-            lex('last_seen_at:>=now-2d').should.eql([
-                {token: 'PROP', matched: 'last_seen_at:'},
-                {token: 'GTE', matched: '>='},
-                {token: 'NOW', matched: 'now'},
-                {token: 'SUB', matched: '-'},
-                {token: 'AMOUNT', matched: '2'},
-                {token: 'INTERVAL', matched: 'd'}
-            ]);
+        describe('Full relative date expressions', function () {
+            it('last_seen_at:>=now-2d', function () {
+                lex('last_seen_at:>=now-2d').should.eql([
+                    {token: 'PROP', matched: 'last_seen_at:'},
+                    {token: 'GTE', matched: '>='},
+                    {token: 'NOW', matched: 'now'},
+                    {token: 'SUB', matched: '-'},
+                    {token: 'AMOUNT', matched: '2'},
+                    {token: 'INTERVAL', matched: 'd'}
+                ]);
+            });
 
-            lex('last_seen_at:>=now+2d').should.eql([
-                {token: 'PROP', matched: 'last_seen_at:'},
-                {token: 'GTE', matched: '>='},
-                {token: 'NOW', matched: 'now'},
-                {token: 'ADD', matched: '+'},
-                {token: 'AMOUNT', matched: '2'},
-                {token: 'INTERVAL', matched: 'd'}
-            ]);
+            it('last_seen_at:>=now+2d', function () {
+                lex('last_seen_at:>=now+2d').should.eql([
+                    {token: 'PROP', matched: 'last_seen_at:'},
+                    {token: 'GTE', matched: '>='},
+                    {token: 'NOW', matched: 'now'},
+                    {token: 'ADD', matched: '+'},
+                    {token: 'AMOUNT', matched: '2'},
+                    {token: 'INTERVAL', matched: 'd'}
+                ]);
+            });
+
+            it('last_seen_at:>=now+2d+foo:bar', function () {
+                lex('last_seen_at:>=now+2d+foo:bar').should.eql([
+                    {token: 'PROP', matched: 'last_seen_at:'},
+                    {token: 'GTE', matched: '>='},
+                    {token: 'NOW', matched: 'now'},
+                    {token: 'ADD', matched: '+'},
+                    {token: 'AMOUNT', matched: '2'},
+                    {token: 'INTERVAL', matched: 'd'},
+                    {token: 'AND', matched: '+'},
+                    {token: 'PROP', matched: 'foo:'},
+                    {token: 'LITERAL', matched: 'bar'}
+                ]);
+            });
+
+            it('foo:bar+last_seen_at:>=now+2d', function () {
+                lex('foo:bar+last_seen_at:>=now+2d').should.eql([
+                    {token: 'PROP', matched: 'foo:'},
+                    {token: 'LITERAL', matched: 'bar'},
+                    {token: 'AND', matched: '+'},
+                    {token: 'PROP', matched: 'last_seen_at:'},
+                    {token: 'GTE', matched: '>='},
+                    {token: 'NOW', matched: 'now'},
+                    {token: 'ADD', matched: '+'},
+                    {token: 'AMOUNT', matched: '2'},
+                    {token: 'INTERVAL', matched: 'd'}
+                ]);
+            });
         });
     });
 

@@ -5,6 +5,7 @@
 omitops                      [^\s'"\+\,\(\)\>\<=\[\]\-]
 omitopsbarnot                [^\s'"\+\,\(\)\>\<=\[\]]
 escapable                    ['"\+\,\(\)\>\<=\[\]]
+final                        [\+\,\(\)\[\]]
 
 %s reldate
 
@@ -20,11 +21,13 @@ escapable                    ['"\+\,\(\)\>\<=\[\]]
 ']'                                                         return 'RBRACKET';
 
 /* relative date handling */
-'now'(?=[-+]\d+[dwMyhms])        this.pushState('reldate'); return 'NOW';
+now(?=[-+]\d+[dwMyhms](?:{final}|$))                        { this.pushState('reldate');
+                                                            return 'NOW'; }
 <reldate>'-'                                                return 'SUB';
 <reldate>'+'                                                return 'ADD';
 <reldate>\d+                                                return 'AMOUNT'
-<reldate>[dwMyhms]                         this.popState(); return 'INTERVAL'
+<reldate>[dwMyhms]                                          { this.popState();
+                                                            return 'INTERVAL' }
 
 {omitops}(\\{escapable}|{omitopsbarnot})+                   return 'LITERAL';
 ['](\\['"]|[^'"])+?[']                                      return 'STRING';
